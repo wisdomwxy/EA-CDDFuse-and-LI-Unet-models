@@ -22,3 +22,13 @@ LI-Unet is compared with different semantic segmentation models.
 Contrast model including LR - ASPP, FCN SegFormer, PSPNet, DeepLabV3 +, DDRNet, techches - Unet, Unet.
 
 ![](./figures/LIunet_compare.png?msec=1759325406919)
+
+## Start quickly
+Run the following code in the project directory to test the fusion effect of EA-CDDFuse:
+'''
+python test_for_EACDD.py
+'''
+Run the following code in the project directory to test the fusion splitting effect of LI-Unet:
+'''
+python test_for_LIUnet.py
+'''
