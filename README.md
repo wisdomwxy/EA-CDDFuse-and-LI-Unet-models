@@ -40,3 +40,8 @@ Run the following code in the project directory to test the fusion splitting eff
 ```bash
 python test_for_LIUnet.py
 ```
+Conduct real-time performance tests on the end-to-end model：
+
+```bash
+python test_fps.py
+```
