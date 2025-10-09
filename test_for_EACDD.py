@@ -16,7 +16,7 @@ logging.basicConfig(level=logging.CRITICAL)
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
-ckpt_path = r"models/CDDFuse_best_12-18-11-37.pth"  # Replace it with your model path
+ckpt_path = r"./models/EACDDFuse_bset.pth"  # Replace it with your model path
 #Select the test dataset as "scatter"
 for dataset_name in ["scatter"]:
     print("\n"*2+"="*80)
