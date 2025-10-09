@@ -26,7 +26,7 @@ Contrast model including LR - ASPP, FCN SegFormer, PSPNet, DeepLabV3 +, DDRNet, 
 ## Start quickly
 Run the following code in the project directory to test the fusion effect of EA-CDDFuse:
 
-
+```bash
 python test_for_EACDD.py
 ```
 
