@@ -1,10 +1,8 @@
 import torch
 import torch.nn as nn
 
-from nets.resnetoriginal import resnet50
-#from nets.resnetCursor import resnet50
+from nets.resnet import resnet50
 from nets.vgg import VGG16
-from block.hcfnet import PPA
 from block.fusion import MultiScaleFeatureFusion, CrossLayerFeatureEnhancement, FeatureRefinementBlock
 
 
@@ -131,3 +129,4 @@ class Unet(nn.Module):
         elif self.backbone == "resnet50":
             for param in self.resnet.parameters():
                 param.requires_grad = True
+
