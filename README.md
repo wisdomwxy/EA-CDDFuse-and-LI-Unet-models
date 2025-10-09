@@ -24,8 +24,8 @@ Contrast model including LR - ASPP, FCN SegFormer, PSPNet, DeepLabV3 +, DDRNet, 
 ![](./figures/LIunet_compare.png?msec=1759325406919)
 
 ## Start quickly
-**python≥3.8 ** **torch≥1.11 **
-Installation dependency environment
+**python≥3.8 ****torch≥1.11 **  
+Installation dependency environment  
 ```bash
 pip install -r requirements.txt
 ```
