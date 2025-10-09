@@ -4,8 +4,8 @@ import time
 import numpy as np
 import os
 import cv2
-from net3 import Restormer_Encoder, Restormer_Decoder
-from nets.unetCursor import Unet
+from net_eacdd import Restormer_Encoder, Restormer_Decoder
+from nets.LIunet import Unet
 import warnings
 import json
 
