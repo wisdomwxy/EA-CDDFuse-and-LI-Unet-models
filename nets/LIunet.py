@@ -1,0 +1,133 @@
+import torch
+import torch.nn as nn
+
+from nets.resnetoriginal import resnet50
+#from nets.resnetCursor import resnet50
+from nets.vgg import VGG16
+from block.hcfnet import PPA
+from block.fusion import MultiScaleFeatureFusion, CrossLayerFeatureEnhancement, FeatureRefinementBlock
+
+
+class unetUp(nn.Module):
+    def __init__(self, in_size, out_size):
+        super(unetUp, self).__init__()
+        self.conv1 = nn.Conv2d(in_size, out_size, kernel_size=3, padding=1)
+        self.conv2 = nn.Conv2d(out_size, out_size, kernel_size=3, padding=1)
+        self.up = nn.UpsamplingBilinear2d(scale_factor=2)
+        self.relu = nn.ReLU(inplace=True)
+        
+        # 添加特征精炼模块
+        self.refine = FeatureRefinementBlock(out_size)
+        # 添加多尺度特征融合
+        self.msff = MultiScaleFeatureFusion(out_size)
+
+    def forward(self, inputs1, inputs2):
+        # 上采样高层特征
+        up_feat = self.up(inputs2)
+        # 融合低层特征
+        outputs = torch.cat([inputs1, up_feat], 1)
+        # 基础特征处理
+        outputs = self.conv1(outputs)
+        outputs = self.relu(outputs)
+        outputs = self.conv2(outputs)
+        outputs = self.relu(outputs)
+        # 特征精炼
+        outputs = self.refine(outputs)
+        # 多尺度特征融合
+        outputs = self.msff(outputs)
+        return outputs
+
+class Unet(nn.Module):
+    def __init__(self, num_classes=21, pretrained=False, backbone='vgg'):
+        super(Unet, self).__init__()
+        if backbone == 'vgg':
+            self.vgg    = VGG16(pretrained = pretrained)
+            in_filters  = [192, 384, 768, 1024]
+        elif backbone == "resnet50":
+            self.resnet = resnet50(pretrained = pretrained)
+            in_filters  = [192, 512, 1024, 3072]
+        else:
+            raise ValueError('Unsupported backbone - `{}`, Use vgg, resnet50.'.format(backbone))
+        out_filters = [64, 128, 256, 512]
+
+        # 跨层特征增强模块
+        if backbone == "resnet50":
+            self.clfe4 = CrossLayerFeatureEnhancement(1024, 2048)
+            self.clfe3 = CrossLayerFeatureEnhancement(512, 1024)
+            self.clfe2 = CrossLayerFeatureEnhancement(256, 512)
+            self.clfe1 = CrossLayerFeatureEnhancement(64, 256)
+        elif backbone == "vgg":
+            self.clfe4 = CrossLayerFeatureEnhancement(512, 512)  # VGG中feat4和feat5都是512通道
+            self.clfe3 = CrossLayerFeatureEnhancement(256, 512)
+            self.clfe2 = CrossLayerFeatureEnhancement(128, 256)
+            self.clfe1 = CrossLayerFeatureEnhancement(64, 128)
+
+        # upsampling
+        # 64,64,512
+        self.up_concat4 = unetUp(in_filters[3], out_filters[3])
+        # 128,128,256
+        self.up_concat3 = unetUp(in_filters[2], out_filters[2])
+        # 256,256,128
+        self.up_concat2 = unetUp(in_filters[1], out_filters[1])
+        # 512,512,64
+        self.up_concat1 = unetUp(in_filters[0], out_filters[0])
+
+        if backbone == 'resnet50':
+            self.up_conv = nn.Sequential(
+                nn.UpsamplingBilinear2d(scale_factor=2),
+                nn.Conv2d(out_filters[0], out_filters[0], kernel_size=3, padding=1),
+                nn.ReLU(),
+                nn.Conv2d(out_filters[0], out_filters[0], kernel_size=3, padding=1),
+                nn.ReLU(),
+            )
+        else:
+            self.up_conv = None
+
+        self.final = nn.Conv2d(out_filters[0], num_classes, 1)
+        self.backbone = backbone
+
+    def forward(self, inputs):
+        if self.backbone == "vgg":
+            [feat1, feat2, feat3, feat4, feat5] = self.vgg.forward(inputs)
+            # 添加VGG的跨层特征增强
+            feat4 = self.clfe4(feat4, feat5)
+            feat3 = self.clfe3(feat3, feat4)
+            feat2 = self.clfe2(feat2, feat3)
+            feat1 = self.clfe1(feat1, feat2)
+        elif self.backbone == "resnet50":
+            [feat1, feat2, feat3, feat4, feat5] = self.resnet.forward(inputs)
+            
+            # 跨层特征增强
+            feat4 = self.clfe4(feat4, feat5)
+            feat3 = self.clfe3(feat3, feat4)
+            feat2 = self.clfe2(feat2, feat3)
+            feat1 = self.clfe1(feat1, feat2)
+
+        # 上采样和特征融合（每个上采样模块现在包含了特征精炼和多尺度特征融合）
+        up4 = self.up_concat4(feat4, feat5)
+        up3 = self.up_concat3(feat3, up4)
+        up2 = self.up_concat2(feat2, up3)
+        up1 = self.up_concat1(feat1, up2)
+
+        if self.up_conv is not None:
+            up1 = self.up_conv(up1)
+
+        final = self.final(up1)
+        
+        return final
+
+    def freeze_backbone(self):
+        if self.backbone == "vgg":
+            for param in self.vgg.parameters():
+                param.requires_grad = False
+        elif self.backbone == "resnet50":
+            for param in self.resnet.parameters():
+                param.requires_grad = False
+
+    def unfreeze_backbone(self):
+        if self.backbone == "vgg":
+            for param in self.vgg.parameters():
+                param.requires_grad = True
+        elif self.backbone == "resnet50":
+            for param in self.resnet.parameters():
+                param.requires_grad = True
