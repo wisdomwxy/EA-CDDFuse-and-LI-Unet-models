@@ -5,7 +5,7 @@ import torch.nn.functional as F
 import numpy as np
 from PIL import Image
 from tqdm import tqdm
-from nets.unetLIUnet import Unet
+from nets.LIunet import Unet
 from utils.utils import cvtColor, preprocess_input, resize_image
 from utils.utils_metrics import compute_mIoU, per_Accuracy
 import cv2
