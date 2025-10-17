@@ -45,3 +45,11 @@ Conduct real-time performance tests on the end-to-end model：
 ```bash
 python test_fps.py
 ```
+Download the dataset and weights using Baidu Netdisk.
+
+The file shared via cloud disk: dataset_and_weights.rar  
+通过网盘分享的文件：dataset_and_weights.rar  
+
+link: https://pan.baidu.com/s/17ZmyCGV39A6QmNYbT_kV3g?pwd=rvvg 提取码: rvvg  
+link: https://pan.baidu.com/s/17ZmyCGV39A6QmNYbT_kV3g?pwd=rvvg Extraction code: rvvg  
+
