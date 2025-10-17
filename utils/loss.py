@@ -61,28 +61,19 @@ class BrightnessLoss(nn.Module):
         self.l1_loss = nn.L1Loss()
     
     def forward(self, pred, target):
-        """
-        Args:
-            pred: 预测图像 (B, 1, H, W)
-            target: 目标图像 (B, 1, H, W)
-        """
-        # 确保输入是单通道
+
         if pred.size(1) > 1:
             pred = pred[:, :1, :, :]
         if target.size(1) > 1:
             target = target[:, :1, :, :]
             
-        # 增强亮度目标
         target_enhanced = torch.clamp(target * self.brightness_target, max=1.0)
         
-        # 添加最小亮度约束
         min_brightness = 0.3
         pred = torch.clamp(pred, min=min_brightness)
         
-        # 计算亮度损失
         brightness_loss = self.l1_loss(pred, target_enhanced)
         
-        # 添加额外的亮度惩罚项，进一步鼓励更高的亮度
         darkness_penalty = torch.mean(torch.relu(0.5 - pred))
         
         return (brightness_loss + darkness_penalty) * self.weight
