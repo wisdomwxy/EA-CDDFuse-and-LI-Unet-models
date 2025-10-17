@@ -115,21 +115,10 @@ class EvalCallback():
                 f.write("\n")
 
     def get_miou_png(self, image):
-        #---------------------------------------------------------#
-        #   在这里将图像转换成RGB图像，防止灰度图在预测时报错。
-        #   代码仅仅支持RGB图像的预测，所有其它类型的图像都会转化成RGB
-        #---------------------------------------------------------#
         image       = cvtColor(image)
         orininal_h  = np.array(image).shape[0]
         orininal_w  = np.array(image).shape[1]
-        #---------------------------------------------------------#
-        #   给图像增加灰条，实现不失真的resize
-        #   也可以直接resize进行识别
-        #---------------------------------------------------------#
         image_data, nw, nh  = resize_image(image, (self.input_shape[1],self.input_shape[0]))
-        #---------------------------------------------------------#
-        #   添加上batch_size维度
-        #---------------------------------------------------------#
         image_data  = np.expand_dims(np.transpose(preprocess_input(np.array(image_data, np.float32)), (2, 0, 1)), 0)
 
         with torch.no_grad():
@@ -137,82 +126,54 @@ class EvalCallback():
             if self.cuda:
                 images = images.cuda()
                 
-            # 记录纯推理开始时间
             if self.cuda:
                 torch.cuda.synchronize()
             inference_start_time = time.time()
                 
-            #---------------------------------------------------#
-            #   图片传入网络进行预测
-            #---------------------------------------------------#
             pr = self.net(images)[0]
             
-            # 记录纯推理结束时间
             if self.cuda:
                 torch.cuda.synchronize()
             inference_end_time = time.time()
             inference_time = inference_end_time - inference_start_time
-            
-            #---------------------------------------------------#
-            #   取出每一个像素点的种类
-            #---------------------------------------------------#
+
             pr = F.softmax(pr.permute(1,2,0),dim = -1).cpu().numpy()
-            #--------------------------------------#
-            #   将灰条部分截取掉
-            #--------------------------------------#
             pr = pr[int((self.input_shape[0] - nh) // 2) : int((self.input_shape[0] - nh) // 2 + nh), \
                     int((self.input_shape[1] - nw) // 2) : int((self.input_shape[1] - nw) // 2 + nw)]
-            #---------------------------------------------------#
-            #   进行图片的resize
-            #---------------------------------------------------#
             pr = cv2.resize(pr, (orininal_w, orininal_h), interpolation = cv2.INTER_LINEAR)
-            #---------------------------------------------------#
-            #   取出每一个像素点的种类
-            #---------------------------------------------------#
             pr = pr.argmax(axis=-1)
     
         image = Image.fromarray(np.uint8(pr))
         return image, inference_time
     
     def save_detailed_metrics(self, hist, IoUs, PA_Recall, Precision, F1_Score, epoch):
-        """
-        保存详细的每类指标结果
-        """
-        # 计算总体准确率
         from .utils_metrics import per_Accuracy
         overall_accuracy = per_Accuracy(hist)
         
-        # 保存每类详细指标到文件
         with open(os.path.join(self.log_dir, "detailed_metrics.txt"), 'w', encoding='utf-8') as f:
-            f.write("每类详细指标统计结果\n")
+            f.write("每类详细指标统计结果(Statistical results of detailed indicators for each category:)\n")
             f.write("=" * 60 + "\n")
             f.write(f"Epoch: {epoch}\n")
             f.write("=" * 60 + "\n")
             
-            # 表头
-            f.write(f"{'类别':<15} {'mIoU':<10} {'Recall':<10} {'Precision':<10} {'F1-Score':<10}\n")
+            f.write(f"{'类别/Class':<15} {'mIoU':<10} {'Recall':<10} {'Precision':<10} {'F1-Score':<10}\n")
             f.write("-" * 60 + "\n")
             
-            # 每类指标
             for i in range(self.num_classes):
                 class_name = self.name_classes[i] if self.name_classes else f"Class_{i}"
                 f.write(f"{class_name:<15} {IoUs[i]*100:<9.2f}% {PA_Recall[i]*100:<9.2f}% {Precision[i]*100:<9.2f}% {F1_Score[i]*100:<9.2f}%\n")
             
             f.write("-" * 60 + "\n")
             
-            # 平均指标
-            f.write(f"{'平均值':<15} {np.nanmean(IoUs)*100:<9.2f}% {np.nanmean(PA_Recall)*100:<9.2f}% {np.nanmean(Precision)*100:<9.2f}% {np.nanmean(F1_Score)*100:<9.2f}%\n")
+            f.write(f"{'平均值/Average value':<15} {np.nanmean(IoUs)*100:<9.2f}% {np.nanmean(PA_Recall)*100:<9.2f}% {np.nanmean(Precision)*100:<9.2f}% {np.nanmean(F1_Score)*100:<9.2f}%\n")
             f.write(f"总体准确率(Accuracy): {overall_accuracy*100:.2f}%\n")
             f.write("=" * 60 + "\n")
             
-        # 保存每类指标的CSV格式（便于后续分析）
         import csv
         with open(os.path.join(self.log_dir, "detailed_metrics.csv"), 'w', newline='', encoding='utf-8') as f:
             writer = csv.writer(f)
-            # 写入表头
             writer.writerow(['Class', 'mIoU(%)', 'Recall(%)', 'Precision(%)', 'F1-Score(%)'])
             
-            # 写入每类数据
             for i in range(self.num_classes):
                 class_name = self.name_classes[i] if self.name_classes else f"Class_{i}"
                 writer.writerow([
@@ -223,19 +184,17 @@ class EvalCallback():
                     f"{F1_Score[i]*100:.2f}"
                 ])
             
-            # 写入平均值
             writer.writerow([
-                "平均值",
+                "平均值/Average value",
                 f"{np.nanmean(IoUs)*100:.2f}",
                 f"{np.nanmean(PA_Recall)*100:.2f}",
                 f"{np.nanmean(Precision)*100:.2f}",
                 f"{np.nanmean(F1_Score)*100:.2f}"
             ])
             
-            # 写入总体准确率
-            writer.writerow(["总体准确率", f"{overall_accuracy*100:.2f}", "", "", ""])
+            writer.writerow(["总体准确率/Overall accuracy rate", f"{overall_accuracy*100:.2f}", "", "", ""])
         
-        print(f"详细指标已保存到:")
+        print(f"详细指标已保存到/The detailed indicators have been saved:")
         print(f"  - {os.path.join(self.log_dir, 'detailed_metrics.txt')}")
         print(f"  - {os.path.join(self.log_dir, 'detailed_metrics.csv')}")
     
@@ -250,16 +209,13 @@ class EvalCallback():
                 os.makedirs(pred_dir)
             print("Get miou.")
             
-            # ==================== 空白图像FPS测试 ====================
             print("\n" + "="*60)
-            print("开始空白图像FPS测试...")
+            print("开始空白图像FPS测试.../Start the blank image FPS test")
             print("="*60)
             
-            # 创建空白图像（全零黑色图像）
             blank_image = Image.new('RGB', (self.input_shape[1], self.input_shape[0]), (0, 0, 0))
-            test_count = 100  # 测试100次
+            test_count = 100  
             
-            # 1. 空白图像纯推理FPS
             blank_inference_times = []
             for _ in range(test_count):
                 _, inference_time = self.get_miou_png(blank_image)
@@ -269,7 +225,6 @@ class EvalCallback():
             blank_pure_inference_fps = test_count / blank_pure_inference_time
             blank_avg_inference_time = blank_pure_inference_time / test_count * 1000
             
-            # 2. 空白图像完整流程FPS
             if self.cuda:
                 torch.cuda.synchronize()
             blank_full_start = time.time()
@@ -409,3 +364,4 @@ class EvalCallback():
 
             print("Get miou done.")
             shutil.rmtree(self.miou_out_path)
+
