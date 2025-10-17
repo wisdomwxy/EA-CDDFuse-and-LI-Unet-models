@@ -14,24 +14,17 @@ class unetUp(nn.Module):
         self.up = nn.UpsamplingBilinear2d(scale_factor=2)
         self.relu = nn.ReLU(inplace=True)
         
-        # 添加特征精炼模块
         self.refine = FeatureRefinementBlock(out_size)
-        # 添加多尺度特征融合
         self.msff = MultiScaleFeatureFusion(out_size)
 
     def forward(self, inputs1, inputs2):
-        # 上采样高层特征
         up_feat = self.up(inputs2)
-        # 融合低层特征
         outputs = torch.cat([inputs1, up_feat], 1)
-        # 基础特征处理
         outputs = self.conv1(outputs)
         outputs = self.relu(outputs)
         outputs = self.conv2(outputs)
         outputs = self.relu(outputs)
-        # 特征精炼
         outputs = self.refine(outputs)
-        # 多尺度特征融合
         outputs = self.msff(outputs)
         return outputs
 
@@ -48,14 +41,13 @@ class Unet(nn.Module):
             raise ValueError('Unsupported backbone - `{}`, Use vgg, resnet50.'.format(backbone))
         out_filters = [64, 128, 256, 512]
 
-        # 跨层特征增强模块
         if backbone == "resnet50":
             self.clfe4 = CrossLayerFeatureEnhancement(1024, 2048)
             self.clfe3 = CrossLayerFeatureEnhancement(512, 1024)
             self.clfe2 = CrossLayerFeatureEnhancement(256, 512)
             self.clfe1 = CrossLayerFeatureEnhancement(64, 256)
         elif backbone == "vgg":
-            self.clfe4 = CrossLayerFeatureEnhancement(512, 512)  # VGG中feat4和feat5都是512通道
+            self.clfe4 = CrossLayerFeatureEnhancement(512, 512) 
             self.clfe3 = CrossLayerFeatureEnhancement(256, 512)
             self.clfe2 = CrossLayerFeatureEnhancement(128, 256)
             self.clfe1 = CrossLayerFeatureEnhancement(64, 128)
@@ -87,7 +79,6 @@ class Unet(nn.Module):
     def forward(self, inputs):
         if self.backbone == "vgg":
             [feat1, feat2, feat3, feat4, feat5] = self.vgg.forward(inputs)
-            # 添加VGG的跨层特征增强
             feat4 = self.clfe4(feat4, feat5)
             feat3 = self.clfe3(feat3, feat4)
             feat2 = self.clfe2(feat2, feat3)
@@ -95,13 +86,11 @@ class Unet(nn.Module):
         elif self.backbone == "resnet50":
             [feat1, feat2, feat3, feat4, feat5] = self.resnet.forward(inputs)
             
-            # 跨层特征增强
             feat4 = self.clfe4(feat4, feat5)
             feat3 = self.clfe3(feat3, feat4)
             feat2 = self.clfe2(feat2, feat3)
             feat1 = self.clfe1(feat1, feat2)
 
-        # 上采样和特征融合（每个上采样模块现在包含了特征精炼和多尺度特征融合）
         up4 = self.up_concat4(feat4, feat5)
         up3 = self.up_concat3(feat3, up4)
         up2 = self.up_concat2(feat2, up3)
@@ -129,4 +118,5 @@ class Unet(nn.Module):
         elif self.backbone == "resnet50":
             for param in self.resnet.parameters():
                 param.requires_grad = True
+
 
