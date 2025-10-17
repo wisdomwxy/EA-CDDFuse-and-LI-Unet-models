@@ -76,27 +76,21 @@ for dataset_name in ["scatter"]:
     eval_folder = test_out_folder  
     ori_img_folder = test_folder
 
-    metric_result = np.zeros((8))
+    metric_result = np.zeros((4))
     for img_name in os.listdir(os.path.join(ori_img_folder, "ir")):
         ir = image_read_cv2(os.path.join(ori_img_folder, "ir", img_name), 'GRAY')
         vi = image_read_cv2(os.path.join(ori_img_folder, "vi", img_name), 'GRAY')
         fi = image_read_cv2(os.path.join(eval_folder, img_name.split('.')[0]+".png"), 'GRAY')
         metric_result += np.array([
             Evaluator.EN(fi), Evaluator.SD(fi),
-            Evaluator.SF(fi), Evaluator.MI(fi, ir, vi),
-            Evaluator.SCD(fi, ir, vi), Evaluator.VIFF(fi, ir, vi),
-            Evaluator.Qabf(fi, ir, vi), Evaluator.SSIM(fi, ir, vi)
+            Evaluator.SF(fi), Evaluator.VIFF(fi, ir, vi)
         ])
 
     metric_result /= len(os.listdir(os.path.join(ori_img_folder, "ir")))
-    print("\t\t EN\t SD\t SF\t MI\tSCD\tVIF\tQabf\tSSIM")
+    print("\t\t EN\t SD\t SF\t VIF")
     print(model_name+'\t'+str(np.round(metric_result[0], 2))+'\t'
           +str(np.round(metric_result[1], 2))+'\t'
           +str(np.round(metric_result[2], 2))+'\t'
-          +str(np.round(metric_result[3], 2))+'\t'
-          +str(np.round(metric_result[4], 2))+'\t'
-          +str(np.round(metric_result[5], 2))+'\t'
-          +str(np.round(metric_result[6], 2))+'\t'
-          +str(np.round(metric_result[7], 2))
+          +str(np.round(metric_result[3], 2))
     )
     print("="*80)
