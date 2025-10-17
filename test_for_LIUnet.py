@@ -10,8 +10,8 @@ from utils.utils import cvtColor, preprocess_input, resize_image
 from utils.utils_metrics import compute_mIoU, per_Accuracy
 import cv2
 
-dataset_path = r'D:\pyc_workspace\unetPPA\dataset_Liunet'
-model_path = r'logs\87.19unet+resnet+MSFF+CLFE.pth'
+dataset_path = r'./test_img/dataset_Liunet'
+model_path = r'./models/LIUnet_best.pth'
 num_classes = 4
 backbone = "resnet50"
 input_shape = [512, 512]
