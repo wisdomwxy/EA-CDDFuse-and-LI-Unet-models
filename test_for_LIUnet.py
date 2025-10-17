@@ -12,6 +12,7 @@ import cv2
 
 dataset_path = r'./test_img/dataset_Liunet'
 model_path = r'./models/LIUnet_best.pth'
+
 num_classes = 4
 backbone = "resnet50"
 input_shape = [512, 512]
@@ -44,12 +45,12 @@ def main():
     images_dir = os.path.join(dataset_path, "JPEGImages")
     image_files = [f for f in os.listdir(images_dir) if f.endswith('.jpg')]
     image_ids = [os.path.splitext(f)[0] for f in sorted(image_files)]
-    print(f"Found {len(image_ids)} validation images")
+    print(f"找到 {len(image_ids)} 张验证图片 | Found {len(image_ids)} validation images")
     
     device = torch.device('cuda' if torch.cuda.is_available() and cuda else 'cpu')
     model = Unet(num_classes=num_classes, backbone=backbone)
     
-    print('Loading weights...')
+    print('加载权重中... | Loading weights...')
     model_dict = model.state_dict()
     pretrained_dict = torch.load(model_path, map_location=device)
     pretrained_dict = {k: v for k, v in pretrained_dict.items() if k in model_dict}
@@ -57,37 +58,36 @@ def main():
     model.load_state_dict(model_dict)
     model = model.to(device)
     model.eval()
-    print('Weights loaded successfully!')
+    print('权重加载成功！ | Weights loaded successfully!')
     
     pred_dir = os.path.join(miou_out_path, 'detection-results')
     os.makedirs(pred_dir, exist_ok=True)
     
-    print("\nGenerating predictions...")
+    print("\n生成预测结果中... | Generating predictions...")
     for image_id in tqdm(image_ids):
         image_path = os.path.join(dataset_path, "JPEGImages", image_id + ".jpg")
         image = Image.open(image_path)
         pred_image = predict_image(model, image, input_shape, cuda)
         pred_image.save(os.path.join(pred_dir, image_id + ".png"))
     
-    print("\nComputing mIoU...")
+    print("\n计算mIoU中... | Computing mIoU...")
     gt_dir = os.path.join(dataset_path, "SegmentationClass")
     hist, IoUs, PA_Recall, Precision, F1_Score = compute_mIoU(gt_dir, pred_dir, image_ids, num_classes, name_classes)
     
     print("\n" + "="*60)
-    print("Evaluation Results:")
+    print("评估结果 | Evaluation Results:")
     print("="*60)
     for i in range(num_classes):
         class_name = name_classes[i]
         print(f"{class_name:<15} IoU:{IoUs[i]*100:>6.2f}% Recall:{PA_Recall[i]*100:>6.2f}% Precision:{Precision[i]*100:>6.2f}% F1:{F1_Score[i]*100:>6.2f}%")
     
     print("-"*60)
-    print(f"{'Average':<15} IoU:{np.nanmean(IoUs)*100:>6.2f}% Recall:{np.nanmean(PA_Recall)*100:>6.2f}% Precision:{np.nanmean(Precision)*100:>6.2f}% F1:{np.nanmean(F1_Score)*100:>6.2f}%")
-    print(f"Overall Accuracy: {per_Accuracy(hist)*100:.2f}%")
+    print(f"{'平均值 | Average':<15} IoU:{np.nanmean(IoUs)*100:>6.2f}% Recall:{np.nanmean(PA_Recall)*100:>6.2f}% Precision:{np.nanmean(Precision)*100:>6.2f}% F1:{np.nanmean(F1_Score)*100:>6.2f}%")
+    print(f"总体准确率 | Overall Accuracy: {per_Accuracy(hist)*100:.2f}%")
     print("="*60)
     
     shutil.rmtree(miou_out_path)
-    print("\nEvaluation completed!")
+    print("\n评估完成！ | Evaluation completed!")
 
 if __name__ == "__main__":
     main()
-
